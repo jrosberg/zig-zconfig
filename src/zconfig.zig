@@ -127,6 +127,7 @@ const ZConfig = struct {
     /// Empty components are ignored
     /// Returns pointer to the located node or error.NotFound if not found
     /// Path is relative to this node
+    ///
     /// Example: root.locate("main/frontend/bind")
     /// will locate the "bind" node under "frontend" under "main"
     pub fn locate(self: *ZConfig, path: []const u8) !*ZConfig {
@@ -138,6 +139,19 @@ const ZConfig = struct {
             it = childn;
         }
         return it;
+    }
+
+    /// Get value at path, returning defaultValue if path doesn't exist or has no value
+    /// Path components are separated by '/'
+    /// Empty components are ignored
+    ///
+    /// Example:
+    /// ```zig
+    /// root.get("main/frontend/bind", "default")
+    /// ```
+    pub fn get(self: *ZConfig, path: []const u8, defaultValue: []const u8) []const u8 {
+        const node = self.locate(path) catch return defaultValue;
+        return node.getValue() orelse defaultValue;
     }
 
     /// Iterator for iterating over child nodes
@@ -727,4 +741,40 @@ test "iterator with multiple nodes of same name" {
     }
 
     try testing.expectEqual(@as(usize, 3), count);
+}
+
+test "get returns value when path exists" {
+    const zc = try ZConfiguration.init(testing.allocator);
+    const root = try zc.loadFromString(example_zpl);
+    defer root.destroy();
+
+    const value = root.get("context/iothreads", "default");
+    try testing.expectEqualStrings("1", value);
+
+    const bind = root.get("main/frontend/bind", "default");
+    try testing.expectEqualStrings("inproc://addr1", bind);
+}
+
+test "get returns default when path doesn't exist" {
+    const zc = try ZConfiguration.init(testing.allocator);
+    var root = try zc.new("root", null);
+    defer root.destroy();
+
+    _ = try root.addWithValue("key", "value");
+
+    const value = root.get("nonexistent", "default");
+    try testing.expectEqualStrings("default", value);
+
+    const nested = root.get("nonexistent/nested/path", "fallback");
+    try testing.expectEqualStrings("fallback", nested);
+}
+
+test "get returns default when node has no value" {
+    const zc = try ZConfiguration.init(testing.allocator);
+    const input = "node";
+    const root = try zc.loadFromString(input);
+    defer root.destroy();
+
+    const value = root.get("node", "default");
+    try testing.expectEqualStrings("default", value);
 }
