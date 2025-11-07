@@ -41,7 +41,9 @@ defer root.destroy();
 
 // Navigate the tree
 const ctx = try root.locate("context");
-const iothreads = ctx.childByName("iothreads").?.getValue(); // "1"
+const iothreads = ctx.childByName("iothreads").?.getValue().?; // "1"
+
+const node_name = ctx.name();
 
 // Build configuration programmatically
 var config = try zc.new("root", null);

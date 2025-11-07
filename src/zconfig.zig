@@ -12,7 +12,7 @@ const Error = error{
 /// Nodes are organized in a tree structure
 const ZConfig = struct {
     container: ZConfiguration = undefined,
-    itemName: ?[]u8 = null,
+    itemName: []u8,
     value: ?[]u8 = null,
     parent: ?*ZConfig = null,
     first_child: ?*ZConfig = null,
@@ -39,10 +39,7 @@ const ZConfig = struct {
         }
 
         // Free the itemName memory
-        if (self.itemName) |n| {
-            self.container.allocator.free(n);
-            self.itemName = null;
-        }
+        self.container.allocator.free(self.itemName);
 
         // Free self if heap-allocated
         if (self.owned) {
@@ -51,7 +48,7 @@ const ZConfig = struct {
     }
 
     /// Get the name of this configuration item
-    pub fn name(self: *const ZConfig) ?[]const u8 {
+    pub fn name(self: *const ZConfig) []const u8 {
         return self.itemName;
     }
 
@@ -119,9 +116,7 @@ const ZConfig = struct {
     pub fn childByName(self: *ZConfig, key: []const u8) ?*ZConfig {
         var it = self.first_child;
         while (it) |n| : (it = n.next) {
-            if (n.itemName) |nm| {
-                if (std.mem.eql(u8, nm, key)) return n;
-            }
+            if (std.mem.eql(u8, n.itemName, key)) return n;
         }
         return null;
     }
@@ -324,8 +319,8 @@ test "basic create destroy" {
     var child = try item.add("child");
     try child.setValue("42");
     defer item.destroy();
-    try testing.expectEqualStrings("root", item.name() orelse unreachable);
-    try testing.expectEqualStrings("child", item.child().?.name().?);
+    try testing.expectEqualStrings("root", item.name());
+    try testing.expectEqualStrings("child", item.child().?.name());
     try testing.expectEqualStrings("42", item.child().?.getValue().?);
 }
 
@@ -391,13 +386,13 @@ test "multiple children and getNext" {
     _ = try item.add("third");
 
     const first = item.child().?;
-    try testing.expectEqualStrings("first", first.name().?);
+    try testing.expectEqualStrings("first", first.name());
 
     const second = first.getNext().?;
-    try testing.expectEqualStrings("second", second.name().?);
+    try testing.expectEqualStrings("second", second.name());
 
     const third = second.getNext().?;
-    try testing.expectEqualStrings("third", third.name().?);
+    try testing.expectEqualStrings("third", third.name());
 
     try testing.expect(third.getNext() == null);
 }
@@ -427,7 +422,7 @@ test "nested structure" {
     _ = try level2.addWithValue("deep", "value");
 
     const found = try root.locate("level1/level2");
-    try testing.expectEqualStrings("level2", found.name().?);
+    try testing.expectEqualStrings("level2", found.name());
     try testing.expectEqualStrings("value", found.childByName("deep").?.getValue().?);
 }
 
@@ -554,9 +549,9 @@ test "parse nested indentation levels" {
     const l1b = l0.childByName("level1b").?;
     const l2 = l1a.childByName("level2").?;
 
-    try testing.expectEqualStrings("level1a", l1a.name().?);
-    try testing.expectEqualStrings("level1b", l1b.name().?);
-    try testing.expectEqualStrings("level2", l2.name().?);
+    try testing.expectEqualStrings("level1a", l1a.name());
+    try testing.expectEqualStrings("level1b", l1b.name());
+    try testing.expectEqualStrings("level2", l2.name());
 }
 
 test "parse multiple siblings with same name" {
@@ -601,7 +596,7 @@ test "deep locate path" {
     defer root.destroy();
 
     const node = try root.locate("main/frontend/option");
-    try testing.expectEqualStrings("option", node.name().?);
+    try testing.expectEqualStrings("option", node.name());
     try testing.expectEqualStrings("1000", node.childByName("hwm").?.getValue().?);
 }
 
@@ -686,17 +681,17 @@ test "iterator over children" {
     var count: usize = 0;
 
     const first = it.next().?;
-    try testing.expectEqualStrings("first", first.name().?);
+    try testing.expectEqualStrings("first", first.name());
     try testing.expectEqualStrings("1", first.getValue().?);
     count += 1;
 
     const second = it.next().?;
-    try testing.expectEqualStrings("second", second.name().?);
+    try testing.expectEqualStrings("second", second.name());
     try testing.expectEqualStrings("2", second.getValue().?);
     count += 1;
 
     const third = it.next().?;
-    try testing.expectEqualStrings("third", third.name().?);
+    try testing.expectEqualStrings("third", third.name());
     try testing.expectEqualStrings("3", third.getValue().?);
     count += 1;
 
@@ -727,7 +722,7 @@ test "iterator with multiple nodes of same name" {
     var count: usize = 0;
 
     while (it.next()) |node| {
-        try testing.expectEqualStrings("bind", node.name().?);
+        try testing.expectEqualStrings("bind", node.name());
         count += 1;
     }
 

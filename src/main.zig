@@ -13,7 +13,7 @@ pub fn main() !void {
     // print all top-level nodes in the configuration using iterator
     var it = root.iterator();
     while (it.next()) |node| {
-        log.info("Node: {s}", .{node.name().?});
+        log.info("Node: {s}", .{node.name()});
     }
 
     // find specific node
